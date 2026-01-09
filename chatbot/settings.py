@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import dj_database_url
 
 # =========================
 # BASE
@@ -89,19 +90,27 @@ WSGI_APPLICATION = 'chatbot.wsgi.application'
 # DATABASE (MySQL utf8mb4)
 # =========================
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv("DB_NAME"),
-        'USER': os.getenv("DB_USER"),
-        'PASSWORD': os.getenv("DB_PASSWORD"),
-        'HOST': os.getenv("DB_HOST"),
-        'PORT': os.getenv("DB_PORT"),
+#DATABASES = {
+    #'default': {
+    #    'ENGINE': 'django.db.backends.mysql',
+    #    'NAME': os.getenv("DB_NAME"),
+    #    'USER': os.getenv("DB_USER"),
+    #    'PASSWORD': os.getenv("DB_PASSWORD"),
+    #    'HOST': os.getenv("DB_HOST"),
+    #    'PORT': os.getenv("DB_PORT"),
         # 'OPTIONS': {
         #     "charset": "utf8mb4",
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         # }
-    }
+   # }
+#}
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default=config("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
 
 
