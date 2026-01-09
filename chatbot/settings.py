@@ -8,6 +8,7 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Cargar .env SOLO en local
 if os.getenv("RENDER") is None:
     try:
         from dotenv import load_dotenv
@@ -18,16 +19,15 @@ if os.getenv("RENDER") is None:
 # SECURITY
 # =========================
 
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-secret-key")
 
-DEBUG = os.getenv("DEBUG") == "True"
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".onrender.com",
 ]
-
 
 # =========================
 # APPLICATIONS
@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'chatbot_nodo',
 ]
 
-
 # =========================
 # MIDDLEWARE
 # =========================
@@ -60,7 +59,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
 # =========================
 # URLS / WSGI
 # =========================
@@ -69,15 +67,15 @@ ROOT_URLCONF = 'chatbot.urls'
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
@@ -85,34 +83,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'chatbot.wsgi.application'
 
-
 # =========================
 # DATABASE (MySQL utf8mb4)
 # =========================
 
-#DATABASES = {
-    #'default': {
-    #    'ENGINE': 'django.db.backends.mysql',
-    #    'NAME': os.getenv("DB_NAME"),
-    #    'USER': os.getenv("DB_USER"),
-    #    'PASSWORD': os.getenv("DB_PASSWORD"),
-    #    'HOST': os.getenv("DB_HOST"),
-    #    'PORT': os.getenv("DB_PORT"),
-        # 'OPTIONS': {
-        #     "charset": "utf8mb4",
-        #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-        # }
-   # }
-#}
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=config("DATABASE_URL"),
+    "default": dj_database_url.parse(
+        os.getenv("DATABASE_URL"),
         conn_max_age=600,
-        ssl_require=True
+        ssl_require=True,
     )
 }
-
 
 # =========================
 # PASSWORD VALIDATION
@@ -133,7 +114,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # =========================
 # INTERNATIONALIZATION
 # =========================
@@ -152,7 +132,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # =========================
 # DEFAULT PK
