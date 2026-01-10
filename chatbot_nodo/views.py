@@ -6,57 +6,64 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import ChatUser, ChatMessage
 from .bot_logic import iniciar_conversacion, procesar_mensaje_usuario
 from .states import MENU_PRINCIPAL
+from .whatsapp import enviar_mensaje_whatsapp
+
+
+VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN")
 
 
 @csrf_exempt
 def chatbot_webhook(request):
-
     # =========================
-    # ✅ VERIFICACIÓN META (GET)
+    # GET → Verificación Meta
     # =========================
     if request.method == "GET":
-        verify_token = request.GET.get("hub.verify_token")
+        mode = request.GET.get("hub.mode")
+        token = request.GET.get("hub.verify_token")
         challenge = request.GET.get("hub.challenge")
 
-        if verify_token == os.getenv("META_VERIFY_TOKEN"):
+        if mode == "subscribe" and token == VERIFY_TOKEN:
             return HttpResponse(challenge)
-        else:
-            return HttpResponse("Invalid verify token", status=403)
+        return HttpResponse("Forbidden", status=403)
 
     # =========================
-    # 🔹 MENSAJES (POST)
+    # POST → Mensajes WhatsApp
     # =========================
     if request.method == "POST":
         try:
-            data_json = json.loads(request.body)
+            data = json.loads(request.body)
         except json.JSONDecodeError:
             return JsonResponse({"error": "JSON inválido"}, status=400)
 
-        usuario_id = data_json.get("usuario_id")
-        mensaje = data_json.get("mensaje", "").strip()
+        try:
+            entry = data["entry"][0]
+            change = entry["changes"][0]
+            value = change["value"]
 
-        if not usuario_id:
-            return JsonResponse({"error": "usuario_id requerido"}, status=400)
+            # Mensaje entrante
+            message = value["messages"][0]
+            usuario_id = message["from"]
+            mensaje = message["text"]["body"]
 
-        # Obtener o crear usuario
+        except (KeyError, IndexError):
+            # Eventos que no son mensajes (los ignoramos)
+            return JsonResponse({"status": "ignored"}, status=200)
+
+        # Usuario
         user, _ = ChatUser.objects.get_or_create(
             telefono=usuario_id,
             defaults={"estado": MENU_PRINCIPAL}
         )
 
         # Guardar mensaje entrante
-        if mensaje:
-            ChatMessage.objects.create(
-                user=user,
-                texto=mensaje,
-                direccion="in"
-            )
+        ChatMessage.objects.create(
+            user=user,
+            texto=mensaje,
+            direccion="in"
+        )
 
         # Lógica del bot
-        if not mensaje:
-            respuesta, estado = iniciar_conversacion(usuario_id)
-        else:
-            respuesta, estado = procesar_mensaje_usuario(usuario_id, mensaje)
+        respuesta, estado = procesar_mensaje_usuario(usuario_id, mensaje)
 
         # Guardar respuesta
         ChatMessage.objects.create(
@@ -65,9 +72,10 @@ def chatbot_webhook(request):
             direccion="out"
         )
 
-        return JsonResponse({
-            "respuesta": respuesta,
-            "estado": estado
-        })
+        # ⚠️ Por ahora solo devolvemos OK
+        # En el paso B enviaremos el mensaje por la API
+        enviar_mensaje_whatsapp(usuario_id, respuesta)
+
+        return JsonResponse({"status": "ok"}, status=200)
 
     return JsonResponse({"error": "Método no permitido"}, status=405)
